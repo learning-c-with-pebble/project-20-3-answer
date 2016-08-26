@@ -1,11 +1,11 @@
-//--------------------------
-// https://github.com/tryone144/PebbleSpeedo/blob/master/src/location.js
-// http://stackoverflow.com/questions/6574585/how-to-convert-longitude-and-latitude-to-street-address MAPZEN
-
-/*
- * SPEEDOMETER for pebble
- * (c) 2015 Bernd Busse
- */
+//-----------------------------------------------------------------------------
+//
+//  JavaScript side for getting latitude and longitude data.
+//
+//  Based VERY loosely on Speedometer for Pebble by Bernd Busse
+//  https://github.com/tryone144/PebbleSpeedo/blob/master/src/location.js
+//
+//  Mike Jipping, August 2016
 
 var watchID;
 var latitude;
@@ -34,7 +34,6 @@ var locationOptions = {
 // Success Callback
 function locationSuccess(pos) {
     var location = pos.coords;
-    console.log("Watch ID: "+JSON.stringify(location));
 
     // Convert values
     latitude = location.latitude ? Math.round(location.latitude * 100) | 0 : -1; // Latitude in Decimal Degrees (negative means south) -> Keep prec. 2
@@ -42,12 +41,12 @@ function locationSuccess(pos) {
     altitude = location.altitude ? Math.round(location.altitude) | 0 : -1; // Altitude in Meters above WGS84 Elipsoid
     accuracy = location.accuracy ? Math.round(location.accuracy) | 0 : -1; // Coordinates Accuracy in Meters
     
-        Pebble.sendAppMessage({
-            "LATITUDE": latitude,
-            "LONGITUDE": longitude,
-            "ALTITUDE": altitude,
-            "ACCURACY": accuracy
-        }, messageSuccessHandler, messageFailureHandler);
+    Pebble.sendAppMessage({
+         "LATITUDE": latitude,
+         "LONGITUDE": longitude,
+         "ALTITUDE": altitude,
+         "ACCURACY": accuracy
+    }, messageSuccessHandler, messageFailureHandler);
 }
 
 // Error Callback
@@ -65,7 +64,6 @@ Pebble.addEventListener("ready", function(e) {
 Pebble.addEventListener("appmessage", function(e) {
     var dictionary = e.payload;
     
-    console.log('Got message: ' + JSON.stringify(dictionary));
     if (dictionary['LATLONG']) {
         watchID = navigator.geolocation.watchPosition(locationSuccess, locationError, locationOptions);
     } else if (dictionary['ADDRESS']) {
@@ -74,26 +72,25 @@ Pebble.addEventListener("appmessage", function(e) {
           latitude = (-load[0] ^ 0xff) + 1 - load[1]/100;
         else
           latitude = load[0] + load[1]/100;
-      latitude = load[0] + load[1]/100;
+        latitude = load[0] + load[1]/100;
         if (load[2] > 127) 
             longitude = (-load[2] ^ 0xff) + 1 - load[3]/100;
         else 
             longitude = load[2] + load[3]/100;
-      var url = "http://pelias.mapzen.com/v1/reverse?api-key=valhalla-bb56Xzi&point.lat=" + latitude + "&point.lon="+longitude;
-        console.log("URL = "+url);
-
-      var req = new XMLHttpRequest();  
-      req.open('GET', url, false);   
-      req.send(null);  
-      if(req.status != 200) return "0";
+        
+        // These URLs are restricted as to the number of accesses per minute
+        // Get your own API key at mapzen.com
+        var url = "http://pelias.mapzen.com/v1/reverse?api-key=valhalla-bb56Xzi&point.lat=" + latitude + "&point.lon="+longitude;
+        var req = new XMLHttpRequest();  
+        req.open('GET', url, false);   
+        req.send(null);  
+        if(req.status != 200) return "0";
       
-      var text = req.responseText;
-      var obj = JSON.parse(text);
-      var len = obj.features.length;
+        var text = req.responseText;
+        var obj = JSON.parse(text);
+        var len = obj.features.length;    
+        var streetaddress = obj.features[len-1].properties.label;
       
-      var streetaddress = obj.features[len-1].properties.label;
-      
-      Pebble.sendAppMessage({"STREETADDRESS": streetaddress}, messageSuccessHandler, messageFailureHandler);
-      
+        Pebble.sendAppMessage({"STREETADDRESS": streetaddress}, messageSuccessHandler, messageFailureHandler);
   }
 });
